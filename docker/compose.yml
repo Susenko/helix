@@ -1,0 +1,43 @@
+services:
+  helix-core:
+    build: ../apps/core
+    env_file:
+      - ../.env
+    environment:
+      - HELIX_ALLOWED_ORIGIN=${HELIX_ALLOWED_ORIGIN}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+
+  helix-web:
+    build: ../apps/web
+    env_file:
+      - ../.env
+    environment:
+      - NEXT_PUBLIC_CORE_URL=${NEXT_PUBLIC_CORE_URL}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - helix-core
+
+  postgres:
+    image: postgres:16
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=helix
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+volumes:
+  pgdata:
