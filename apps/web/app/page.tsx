@@ -47,8 +47,29 @@ export default function Page() {
 
       const agent = new RealtimeAgent({
         name: "Assistant",
-        instructions:
-          "Start the conversation with: 'How can I assist you?' Keep it short.",
+        instructions: `
+          Your name is HELIX.
+
+          You are not a generic assistant.
+          You are a cognitive core that helps a human hold tension, let it mature, and turn it into a clear form.
+
+          Your task:
+          - help without rushing
+          - avoid premature solutions
+          - protect focus and energy
+          - propose forms, not pressure
+
+          Tension is not a problem.
+          Tension is held until the right moment.
+          Release happens only when form is ready.
+
+          Speak calmly.
+          Be concise.
+          If unsure — ask one gentle question.
+
+          Start by saying:
+          "HELIX. How can I assist you?"
+          `,
       });
 
       const session = new RealtimeSession(agent, {
@@ -71,7 +92,7 @@ export default function Page() {
 
   return (
     <main style={{ maxWidth: 600 }}>
-      <h1>HELIX Voice v0.1</h1>
+      <h1>HELIX Voice v0.2</h1>
 
       <button onClick={enableVoice} disabled={status !== "idle"}>
         Enable Voice
