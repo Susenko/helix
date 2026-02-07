@@ -6,6 +6,8 @@ services:
     environment:
       - HELIX_ALLOWED_ORIGIN=${HELIX_ALLOWED_ORIGIN}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - ../apps/core:/app
     ports:
       - "8000:8000"
     depends_on:
@@ -18,6 +20,9 @@ services:
       - ../.env
     environment:
       - NEXT_PUBLIC_CORE_URL=${NEXT_PUBLIC_CORE_URL}
+    volumes:
+      - ../apps/web:/app
+      - /app/node_modules
     ports:
       - "3000:3000"
     depends_on:

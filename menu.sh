@@ -13,6 +13,8 @@ menu() {
   echo "5) logs core"
   echo "6) logs web"
   echo "7) status"
+  echo "8) rebuild web"
+  echo "9) rebuild core"
   echo "0) exit"
   echo -n "> "
 }
@@ -31,6 +33,8 @@ while true; do
     5) $DC logs -f --tail=200 helix-core ;;
     6) $DC logs -f --tail=200 helix-web ;;
     7) $DC ps ;;
+    8) $DC build --no-cache helix-web ;;
+    9) $DC build --no-cache helix-core ;;
     0) exit 0 ;;
     *) echo "Unknown option" ;;
   esac
