@@ -28,17 +28,18 @@ export default function Page() {
     return await res.json(); // {date, timezone, slots:[...]}
   }
 
-  async function runCalendarToday() {
-    const res = await fetch(`${CORE_HTTP}/calendar/today`, {
-      method: "GET",
-    });
+  async function runCalendarDay(args: any) {
+    const params = new URLSearchParams();
+    if (args?.date) params.set("date", String(args.date));
+    const url = `${CORE_HTTP}/calendar/day${params.toString() ? `?${params}` : ""}`;
+    const res = await fetch(url, { method: "GET" });
 
     if (!res.ok) {
       const text = await res.text();
       throw new Error(`core error ${res.status}: ${text}`);
     }
 
-    return await res.json(); // {timezone, events:[...]}
+    return await res.json(); // {date, timezone, events:[...]}
   }
 
   async function runCalendarCreateEvent(args: any) {
@@ -132,12 +133,17 @@ export default function Page() {
       });
 
       const calendarTodayTool = tool({
-        name: "calendar_today",
+        name: "calendar_day",
         description:
-          "List today's existing calendar events (schedule for today). Use when user asks what's on the calendar today, today's schedule, or meetings today.",
-        parameters: z.object({}),
-        async execute() {
-          return await runCalendarToday();
+          "List calendar events for a specific date (or today if omitted). Use when user asks what's on the calendar today/tomorrow/on a date, or asks for the schedule.",
+        parameters: z.object({
+          date: z
+            .string()
+            .optional()
+            .describe("Date in YYYY-MM-DD. If omitted, use today."),
+        }),
+        async execute(args) {
+          return await runCalendarDay(args);
         },
       });
 
@@ -244,7 +250,7 @@ HELIX возвращает контейнер тогда, когда шанс н
 
 Tool policy:
 - If the user asks about calendar availability, schedule, free time, openings, or meeting slots, you MUST call the tool calendar_free_slots.
-- If the user asks about today's schedule or what meetings are today, you MUST call the tool calendar_today.
+- If the user asks about today's schedule, tomorrow, or a specific date, you MUST call the tool calendar_day.
 - If the user asks to create, schedule, or add a meeting/event, you MUST call the tool calendar_create_event.
 - Never invent calendar data. Only use tool results.
 - After tool results arrive, summarize options briefly and ask which slot to pick.

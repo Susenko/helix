@@ -17,10 +17,13 @@ async def get_db() -> AsyncSession:
     async with SessionLocal() as db:
         yield db
 
-def today_range_iso(tz_name: str) -> tuple[str, str]:
+def day_range_iso(tz_name: str, date_iso: str | None = None) -> tuple[str, str]:
     tz = ZoneInfo(tz_name)
-    now = datetime.now(tz)
-    start = datetime.combine(now.date(), time(0, 0), tzinfo=tz)
+    if date_iso:
+        day = datetime.fromisoformat(date_iso).date()
+    else:
+        day = datetime.now(tz).date()
+    start = datetime.combine(day, time(0, 0), tzinfo=tz)
     end = start + timedelta(days=1)
     # Google API expects RFC3339 timestamps
     return start.isoformat(), end.isoformat()
@@ -41,7 +44,7 @@ async def today(db: AsyncSession = Depends(get_db)):
         new_expiry = compute_expiry_utc(refreshed.get("expires_in"))
         tok = await repo.update_access(db, tok, access_token=new_access, expiry_utc=new_expiry)
 
-    time_min, time_max = today_range_iso(settings.user_timezone)
+    time_min, time_max = day_range_iso(settings.user_timezone)
     data = await list_events(tok.access_token, time_min, time_max)
 
     items = data.get("items", [])
@@ -59,6 +62,45 @@ async def today(db: AsyncSession = Depends(get_db)):
         })
 
     return {"timezone": settings.user_timezone, "events": events}
+
+
+@router.get("/day")
+async def day(date: str | None = None, db: AsyncSession = Depends(get_db)):
+    repo = GoogleTokensRepo()
+    tok = await repo.get_latest(db)
+    if not tok:
+        raise HTTPException(status_code=401, detail="Google Calendar not connected. Visit /oauth/google/start")
+
+    # refresh if expired (with small leeway)
+    if tok.expiry_utc and datetime.utcnow() > (tok.expiry_utc - timedelta(seconds=30)):
+        if not tok.refresh_token:
+            raise HTTPException(status_code=401, detail="No refresh token. Reconnect via /oauth/google/start")
+        refreshed = await refresh_access_token(tok.refresh_token)
+        new_access = refreshed["access_token"]
+        new_expiry = compute_expiry_utc(refreshed.get("expires_in"))
+        tok = await repo.update_access(db, tok, access_token=new_access, expiry_utc=new_expiry)
+
+    try:
+        time_min, time_max = day_range_iso(settings.user_timezone, date)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid date format, expected YYYY-MM-DD")
+
+    data = await list_events(tok.access_token, time_min, time_max)
+
+    items = data.get("items", [])
+    events = []
+    for it in items:
+        start = (it.get("start") or {}).get("dateTime") or (it.get("start") or {}).get("date")
+        end = (it.get("end") or {}).get("dateTime") or (it.get("end") or {}).get("date")
+        events.append({
+            "id": it.get("id"),
+            "summary": it.get("summary"),
+            "start": start,
+            "end": end,
+            "status": it.get("status"),
+        })
+
+    return {"date": date, "timezone": settings.user_timezone, "events": events}
 
 @router.post("/free-slots")
 async def free_slots(payload: dict, db: AsyncSession = Depends(get_db)):
