@@ -7,14 +7,14 @@ from app.settings import settings
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 
-READONLY_SCOPE = "https://www.googleapis.com/auth/calendar.events.readonly"
+CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.events"
 
 def build_google_auth_url(state: str) -> str:
     params = {
         "client_id": settings.google_client_id,
         "redirect_uri": settings.google_redirect_uri,
         "response_type": "code",
-        "scope": READONLY_SCOPE,
+        "scope": CALENDAR_SCOPE,
         "access_type": "offline",      # нужен refresh_token
         "prompt": "consent",           # чтобы refresh_token точно пришёл
         "include_granted_scopes": "true",

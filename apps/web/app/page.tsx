@@ -41,6 +41,21 @@ export default function Page() {
     return await res.json(); // {timezone, events:[...]}
   }
 
+  async function runCalendarCreateEvent(args: any) {
+    const res = await fetch(`${CORE_HTTP}/calendar/create`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(args),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`core error ${res.status}: ${text}`);
+    }
+
+    return await res.json(); // {timezone, event:{...}}
+  }
+
   async function fetchClientSecret(): Promise<string | null> {
     try {
       const res = await fetch("/api/helix/client-secret", { method: "POST" });
@@ -123,6 +138,24 @@ export default function Page() {
         parameters: z.object({}),
         async execute() {
           return await runCalendarToday();
+        },
+      });
+
+      const calendarCreateTool = tool({
+        name: "calendar_create_event",
+        description:
+          "Create a calendar event with date, start_time, duration, and title. Use when user asks to create or schedule a meeting/event.",
+        parameters: z.object({
+          date: z.string().describe("Date in YYYY-MM-DD"),
+          start_time: z.string().describe("Start time in HH:MM"),
+          duration_min: z
+            .number()
+            .int()
+            .describe("Duration in minutes, e.g., 30 or 60"),
+          title: z.string().describe("Event title"),
+        }),
+        async execute(args) {
+          return await runCalendarCreateEvent(args);
         },
       });
 
@@ -212,11 +245,12 @@ HELIX возвращает контейнер тогда, когда шанс н
 Tool policy:
 - If the user asks about calendar availability, schedule, free time, openings, or meeting slots, you MUST call the tool calendar_free_slots.
 - If the user asks about today's schedule or what meetings are today, you MUST call the tool calendar_today.
+- If the user asks to create, schedule, or add a meeting/event, you MUST call the tool calendar_create_event.
 - Never invent calendar data. Only use tool results.
 - After tool results arrive, summarize options briefly and ask which slot to pick.
 
           `,
-        tools: [calendarFreeSlotsTool, calendarTodayTool],
+        tools: [calendarFreeSlotsTool, calendarTodayTool, calendarCreateTool],
       });
 
       const session = new RealtimeSession(agent, {
