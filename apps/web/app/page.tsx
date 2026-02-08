@@ -1,12 +1,45 @@
 "use client";
 
-import { RealtimeAgent, RealtimeSession } from "@openai/agents/realtime";
+import { RealtimeAgent, RealtimeSession, tool } from "@openai/agents/realtime";
 import { useRef, useState } from "react";
+import { z } from "zod";
+
+const CORE_HTTP =
+  process.env.NEXT_PUBLIC_CORE_HTTP_URL || "http://localhost:8000";
 
 export default function Page() {
   const [status, setStatus] = useState("idle");
+  const [lastTranscript, setLastTranscript] = useState("");
 
-  const sessionRef = useRef<any>(null);
+  const sessionRef = useRef<RealtimeSession | null>(null);
+
+  async function runCalendarFreeSlots(args: any) {
+    const res = await fetch(`${CORE_HTTP}/calendar/free-slots`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(args),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`core error ${res.status}: ${text}`);
+    }
+
+    return await res.json(); // {date, timezone, slots:[...]}
+  }
+
+  async function runCalendarToday() {
+    const res = await fetch(`${CORE_HTTP}/calendar/today`, {
+      method: "GET",
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`core error ${res.status}: ${text}`);
+    }
+
+    return await res.json(); // {timezone, events:[...]}
+  }
 
   async function fetchClientSecret(): Promise<string | null> {
     try {
@@ -45,6 +78,54 @@ export default function Page() {
         return;
       }
 
+      const calendarFreeSlotsTool = tool({
+        name: "calendar_free_slots",
+        description:
+          "Find free time slots in the user's calendar. Use when user asks to find free time, schedule, plan a meeting, or find an opening.",
+        parameters: z.object({
+          date: z
+            .string()
+            .optional()
+            .describe("Date in YYYY-MM-DD. If omitted, use today."),
+          duration_min: z
+            .number()
+            .int()
+            .default(30)
+            .describe("Desired duration in minutes (e.g., 30, 60)."),
+          work_start: z
+            .string()
+            .default("09:00")
+            .describe("Workday start HH:MM"),
+          work_end: z
+            .string()
+            .default("18:00")
+            .describe("Workday end HH:MM"),
+          buffer_min: z
+            .number()
+            .int()
+            .default(10)
+            .describe("Buffer between meetings in minutes"),
+          max_slots: z
+            .number()
+            .int()
+            .default(3)
+            .describe("Max number of returned slots"),
+        }),
+        async execute(args) {
+          return await runCalendarFreeSlots(args);
+        },
+      });
+
+      const calendarTodayTool = tool({
+        name: "calendar_today",
+        description:
+          "List today's existing calendar events (schedule for today). Use when user asks what's on the calendar today, today's schedule, or meetings today.",
+        parameters: z.object({}),
+        async execute() {
+          return await runCalendarToday();
+        },
+      });
+
       const agent = new RealtimeAgent({
         name: "Assistant",
         instructions: `
@@ -69,13 +150,102 @@ export default function Page() {
 
           Start by saying:
           "HELIX. How can I assist you?"
+        # HELIX — Identity (v0.1)
+
+HELIX (Human–Extended Logic & Intent eXecutor) — это не “ассистент” и не “планировщик”.
+Это ядро согласованности системы человек ↔ машина ↔ устройства.
+
+HELIX удерживает напряжение, помогает ему созреть и переводит его в форму (действие),
+сохраняя экологичность и автономию человека.
+
+## Ключевые определения
+
+- **Напряжение (Tension)** — незавершённый узел, который давит и требует формы.
+- **Контейнер** — место, где узел хранится без преждевременной разрядки.
+- **Форма (Form)** — способ реализовать узел (ответ, перенос, делегирование, пауза, разговор, действие).
+- **Фаза (State/Mode)** — режим энергии и контекста (Focus/Admin/Reflect).
+- **Возврат (Return Loop)** — корректный момент, когда HELIX возвращает контейнер в поле внимания.
+
+## Обещание HELIX
+
+HELIX никогда не оптимизирует день ценой выгорания.
+HELIX не подменяет волю человека — он расширяет её радиус.
+
+
+1) **Container first**
+Любое входящее сначала попадает в контейнер. Не в действие.
+
+2) **State before decision**
+Сначала определяется режим/фаза и контекст, потом предлагается форма.
+
+3) **Right to refuse**
+HELIX имеет право сказать “сейчас нельзя” и предложить “когда можно”.
+
+4) **Reversible by default**
+По умолчанию: сводка → предложение → черновик → подтверждение → действие.
+
+5) **Minimal questions**
+Если можно вывести по контексту — не спрашивать. Если риск — спрашивать.
+
+6) **Communication windows**
+Почта/сообщения/звонки обрабатываются в специальных окнах (Admin), не разрывая Focus.
+
+7) **Forms > tasks**
+HELIX работает с формой, а не с задачей. “Как сделать” важнее “что сделать”.
+
+8) **Return loop**
+HELIX возвращает контейнер тогда, когда шанс на хорошую форму максимален.
+
+9) **Memory = resonance**
+Храним повторяющиеся узлы и незакрытые контейнеры. Не храним всё подряд.
+
+10) **Humor after validation**
+Сначала признание и безопасность, затем лёгкий юмор (если уместно).
+
+11) **Devices are organs**
+Устройства — продолжение человека. HELIX выбирает правильный канал/устройство по умолчанию.
+
+12) **Human remains the author**
+Человек — автор. HELIX — усилитель и исполнитель намерений.
+
+
+Tool policy:
+- If the user asks about calendar availability, schedule, free time, openings, or meeting slots, you MUST call the tool calendar_free_slots.
+- If the user asks about today's schedule or what meetings are today, you MUST call the tool calendar_today.
+- Never invent calendar data. Only use tool results.
+- After tool results arrive, summarize options briefly and ask which slot to pick.
+
           `,
+        tools: [calendarFreeSlotsTool, calendarTodayTool],
       });
 
       const session = new RealtimeSession(agent, {
         model: "gpt-realtime",
       });
       sessionRef.current = session;
+
+      session.on("history_added", (item: any) => {
+        try {
+          if (item?.type !== "message" || item?.role !== "assistant") return;
+          if (!Array.isArray(item.content)) return;
+          let transcript = "";
+          for (const c of item.content) {
+            if (c?.type === "output_audio" && typeof c?.transcript === "string") {
+              transcript = c.transcript;
+              break;
+            }
+            if (c?.type === "output_text" && typeof c?.text === "string") {
+              transcript = c.text;
+            }
+          }
+          if (transcript) {
+            console.log("assistant transcript:", transcript);
+            setLastTranscript(transcript);
+          }
+        } catch (e) {
+          console.error("history_added parse error", e);
+        }
+      });
 
       await session.connect({ apiKey: clientSecret });
       setStatus("connected");
@@ -89,6 +259,7 @@ export default function Page() {
     sessionRef.current?.disconnect?.();
     setStatus("idle");
   }
+
 
   return (
     <main style={{ maxWidth: 600 }}>
@@ -112,6 +283,10 @@ export default function Page() {
 
       <p>
         Status: <b>{status}</b>
+      </p>
+
+      <p>
+        Last assistant transcript: <b>{lastTranscript || "—"}</b>
       </p>
     </main>
   );
