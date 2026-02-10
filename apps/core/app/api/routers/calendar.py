@@ -63,6 +63,37 @@ async def today(db: AsyncSession = Depends(get_db)):
 
     return {"timezone": settings.user_timezone, "events": events}
 
+@router.get("/status")
+async def status(db: AsyncSession = Depends(get_db)):
+    repo = GoogleTokensRepo()
+    tok = await repo.get_latest(db)
+    if not tok:
+        return {"connected": False, "reason": "no_token"}
+
+    if tok.expiry_utc and datetime.utcnow() > (tok.expiry_utc - timedelta(seconds=30)):
+        if not tok.refresh_token:
+            return {
+                "connected": False,
+                "reason": "refresh_token_missing",
+                "expiry_utc": tok.expiry_utc.isoformat() if tok.expiry_utc else None,
+            }
+        try:
+            refreshed = await refresh_access_token(tok.refresh_token)
+            new_access = refreshed["access_token"]
+            new_expiry = compute_expiry_utc(refreshed.get("expires_in"))
+            tok = await repo.update_access(db, tok, access_token=new_access, expiry_utc=new_expiry)
+        except Exception:
+            return {
+                "connected": False,
+                "reason": "refresh_failed",
+                "expiry_utc": tok.expiry_utc.isoformat() if tok.expiry_utc else None,
+            }
+
+    return {
+        "connected": True,
+        "expiry_utc": tok.expiry_utc.isoformat() if tok.expiry_utc else None,
+        "has_refresh_token": bool(tok.refresh_token),
+    }
 
 @router.get("/day")
 async def day(date: str | None = None, db: AsyncSession = Depends(get_db)):

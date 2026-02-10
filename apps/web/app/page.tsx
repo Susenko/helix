@@ -1,7 +1,7 @@
 "use client";
 
 import { RealtimeAgent, RealtimeSession, tool } from "@openai/agents/realtime";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 
 const CORE_HTTP =
@@ -10,6 +10,10 @@ const CORE_HTTP =
 export default function Page() {
   const [status, setStatus] = useState("idle");
   const [lastTranscript, setLastTranscript] = useState("");
+  const [calendarStatus, setCalendarStatus] = useState<
+    "unknown" | "checking" | "connected" | "disconnected" | "error"
+  >("unknown");
+  const [calendarReason, setCalendarReason] = useState("");
 
   const sessionRef = useRef<RealtimeSession | null>(null);
 
@@ -84,6 +88,40 @@ export default function Page() {
     }
   }
 
+  async function fetchCalendarStatus() {
+    setCalendarStatus("checking");
+    setCalendarReason("");
+    try {
+      const res = await fetch(`${CORE_HTTP}/calendar/status`, {
+        method: "GET",
+      });
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {
+        data = null;
+      }
+
+      if (!res.ok) {
+        setCalendarStatus("error");
+        setCalendarReason(`http_${res.status}`);
+        return;
+      }
+
+      if (data?.connected) {
+        setCalendarStatus("connected");
+        setCalendarReason("");
+      } else {
+        setCalendarStatus("disconnected");
+        setCalendarReason(data?.reason ? String(data.reason) : "");
+      }
+    } catch (e) {
+      console.error("calendar status error", e);
+      setCalendarStatus("error");
+      setCalendarReason("network_error");
+    }
+  }
+
   async function enableVoice() {
     setStatus("connecting");
 
@@ -112,10 +150,7 @@ export default function Page() {
             .string()
             .default("09:00")
             .describe("Workday start HH:MM"),
-          work_end: z
-            .string()
-            .default("18:00")
-            .describe("Workday end HH:MM"),
+          work_end: z.string().default("18:00").describe("Workday end HH:MM"),
           buffer_min: z
             .number()
             .int()
@@ -270,7 +305,10 @@ Tool policy:
           if (!Array.isArray(item.content)) return;
           let transcript = "";
           for (const c of item.content) {
-            if (c?.type === "output_audio" && typeof c?.transcript === "string") {
+            if (
+              c?.type === "output_audio" &&
+              typeof c?.transcript === "string"
+            ) {
               transcript = c.transcript;
               break;
             }
@@ -296,10 +334,22 @@ Tool policy:
   }
 
   async function stop() {
-    sessionRef.current?.disconnect?.();
-    setStatus("idle");
+    const session = sessionRef.current;
+    if (!session) return;
+    setStatus("disconnecting");
+    try {
+      await session.disconnect?.();
+    } catch (e) {
+      console.error("disconnect error", e);
+    } finally {
+      sessionRef.current = null;
+      setStatus("idle");
+    }
   }
 
+  useEffect(() => {
+    fetchCalendarStatus();
+  }, []);
 
   return (
     <main style={{ maxWidth: 600 }}>
@@ -321,12 +371,28 @@ Tool policy:
         Get Client Secret
       </button>
 
+      <button onClick={fetchCalendarStatus} style={{ marginLeft: 10 }}>
+        Check Calendar
+      </button>
+
+      <a
+        href="http://localhost:8000/oauth/google/start"
+        style={{ marginLeft: 10 }}
+      >
+        Google OAuth
+      </a>
+
       <p>
         Status: <b>{status}</b>
       </p>
 
       <p>
         Last assistant transcript: <b>{lastTranscript || "—"}</b>
+      </p>
+
+      <p>
+        Calendar: <b>{calendarStatus}</b>
+        {calendarReason ? ` (${calendarReason})` : ""}
       </p>
     </main>
   );
