@@ -15,6 +15,7 @@ menu() {
   echo "7) status"
   echo "8) rebuild web"
   echo "9) rebuild core"
+  echo "51) shell core"
   echo "0) exit"
   echo -n "> "
 }
@@ -23,8 +24,21 @@ while true; do
   menu
   read -r choice
   case "$choice" in
-    1)  
-        $DC up -d --build 
+    1)
+        $DC up -d --build
+        for i in {1..60}; do
+          if $DC ps -q postgres >/dev/null 2>&1 && \
+             $DC exec -T postgres pg_isready -U postgres -d helix >/dev/null 2>&1; then
+            break
+          fi
+          sleep 2
+        done
+        for i in {1..20}; do
+          if $DC exec -T helix-core alembic upgrade head; then
+            break
+          fi
+          sleep 2
+        done
         ;;
     2) $DC down ;;
     3) docker stop $(docker ps -a -q) && docker rm $(docker ps -a -q) && docker rmi $(docker images -a -q) && docker network prune -f && docker volume rm $(docker volume ls -q) ;;
@@ -35,6 +49,7 @@ while true; do
     7) $DC ps ;;
     8) $DC build --no-cache helix-web ;;
     9) $DC build --no-cache helix-core ;;
+    51) docker exec -it docker-helix-core-1 bash ;;
     0) exit 0 ;;
     *) echo "Unknown option" ;;
   esac

@@ -27,7 +27,19 @@ services:
       - "3000:3000"
     depends_on:
       - helix-core
-
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: helix_pgadmin
+    restart: always
+    ports:
+      - "8080:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@helix.com
+      PGADMIN_DEFAULT_PASSWORD: secret123
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
   postgres:
     image: postgres:16
     environment:
@@ -46,3 +58,4 @@ services:
 
 volumes:
   pgdata:
+  pgadmin_data:

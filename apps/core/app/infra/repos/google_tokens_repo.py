@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.infra.db.models import GoogleOAuthToken
+from app.infra.db.models.google_oauth_token import GoogleOAuthToken
 
 class GoogleTokensRepo:
     async def get_latest(self, db: AsyncSession) -> GoogleOAuthToken | None:

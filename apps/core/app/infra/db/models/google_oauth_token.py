@@ -3,6 +3,7 @@ from sqlalchemy import String, DateTime, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from app.infra.db.schema import Base
 
+
 class GoogleOAuthToken(Base):
     __tablename__ = "google_oauth_tokens"
 
