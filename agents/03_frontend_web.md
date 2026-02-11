@@ -16,3 +16,8 @@ The frontend is built with **Next.js 15** (using React 19) and TypeScript. It is
 
 ## Integration
 The frontend communicates with `api/helix/*` routes which in turn communicate with the Core backend or external services like OpenAI.
+
+## Current UI Capabilities
+- Voice agent tools for calendar operations and tension management.
+- Voice agent tools for baseline fields CRUD (`baseline_fields_list/create/update/delete`).
+- Dashboard tables on `app/page.tsx` for active tensions and baseline fields, each with manual refresh buttons.

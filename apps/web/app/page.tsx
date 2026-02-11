@@ -7,6 +7,26 @@ import { z } from "zod";
 const CORE_HTTP =
   process.env.NEXT_PUBLIC_CORE_HTTP_URL || "http://localhost:8000";
 
+type TensionRow = {
+  id: number;
+  title: string;
+  status: string;
+  charge: number;
+  vector: string;
+};
+
+type BaselineFieldRow = {
+  id: number;
+  user_id: string | null;
+  name: string;
+  description: string | null;
+  mode: "any" | "focus" | "admin" | "reflect";
+  min_quota_min_per_week: number;
+  max_quota_min_per_week: number;
+  preferred_windows: Record<string, unknown>;
+  is_active: boolean;
+};
+
 export default function Page() {
   const [status, setStatus] = useState("idle");
   const [lastTranscript, setLastTranscript] = useState("");
@@ -14,6 +34,12 @@ export default function Page() {
     "unknown" | "checking" | "connected" | "disconnected" | "error"
   >("unknown");
   const [calendarReason, setCalendarReason] = useState("");
+  const [tensions, setTensions] = useState<TensionRow[]>([]);
+  const [tensionsLoading, setTensionsLoading] = useState(false);
+  const [tensionsError, setTensionsError] = useState("");
+  const [baselineFields, setBaselineFields] = useState<BaselineFieldRow[]>([]);
+  const [baselineLoading, setBaselineLoading] = useState(false);
+  const [baselineError, setBaselineError] = useState("");
 
   const sessionRef = useRef<RealtimeSession | null>(null);
 
@@ -59,6 +85,137 @@ export default function Page() {
     }
 
     return await res.json(); // {timezone, event:{...}}
+  }
+
+  async function runTensionsCreate(args: any) {
+    const res = await fetch(`${CORE_HTTP}/tensions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(args),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`core error ${res.status}: ${text}`);
+    }
+
+    return await res.json(); // {id, title, status, charge, vector}
+  }
+
+  async function runTensionsListActive(args: any) {
+    const params = new URLSearchParams();
+    if (typeof args?.limit === "number") {
+      params.set("limit", String(args.limit));
+    }
+    const url = `${CORE_HTTP}/tensions/active${params.toString() ? `?${params}` : ""}`;
+    const res = await fetch(url, { method: "GET" });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`core error ${res.status}: ${text}`);
+    }
+
+    return await res.json(); // [{id, title, status, charge, vector}]
+  }
+
+  async function runTensionsUpdate(args: any) {
+    const id = Number(args?.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      throw new Error("invalid tension id");
+    }
+
+    const payload: Record<string, unknown> = {};
+    if (typeof args?.charge === "number") payload.charge = args.charge;
+    if (typeof args?.vector === "string") payload.vector = args.vector;
+    if (typeof args?.status === "string") payload.status = args.status;
+
+    const res = await fetch(`${CORE_HTTP}/tensions/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`core error ${res.status}: ${text}`);
+    }
+
+    return await res.json(); // {id, title, status, charge, vector}
+  }
+
+  async function runBaselineFieldsList(args: any) {
+    const params = new URLSearchParams();
+    if (typeof args?.limit === "number") {
+      params.set("limit", String(args.limit));
+    }
+    if (typeof args?.include_inactive === "boolean") {
+      params.set("include_inactive", String(args.include_inactive));
+    }
+    const url = `${CORE_HTTP}/baseline-fields${params.toString() ? `?${params}` : ""}`;
+    const res = await fetch(url, { method: "GET" });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`core error ${res.status}: ${text}`);
+    }
+    return await res.json(); // BaselineFieldRow[]
+  }
+
+  async function runBaselineFieldsCreate(args: any) {
+    const res = await fetch(`${CORE_HTTP}/baseline-fields`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(args),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`core error ${res.status}: ${text}`);
+    }
+    return await res.json(); // BaselineFieldRow
+  }
+
+  async function runBaselineFieldsUpdate(args: any) {
+    const id = Number(args?.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      throw new Error("invalid baseline field id");
+    }
+    const payload: Record<string, unknown> = {};
+    const keys = [
+      "name",
+      "description",
+      "mode",
+      "min_quota_min_per_week",
+      "max_quota_min_per_week",
+      "preferred_windows",
+      "is_active",
+    ] as const;
+    for (const key of keys) {
+      if (args?.[key] !== undefined) payload[key] = args[key];
+    }
+    const res = await fetch(`${CORE_HTTP}/baseline-fields/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`core error ${res.status}: ${text}`);
+    }
+    return await res.json(); // BaselineFieldRow
+  }
+
+  async function runBaselineFieldsDelete(args: any) {
+    const id = Number(args?.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      throw new Error("invalid baseline field id");
+    }
+    const res = await fetch(`${CORE_HTTP}/baseline-fields/${id}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`core error ${res.status}: ${text}`);
+    }
+    return await res.json(); // {ok, id}
   }
 
   async function fetchClientSecret(): Promise<string | null> {
@@ -119,6 +276,40 @@ export default function Page() {
       console.error("calendar status error", e);
       setCalendarStatus("error");
       setCalendarReason("network_error");
+    }
+  }
+
+  async function refreshTensions() {
+    setTensionsLoading(true);
+    setTensionsError("");
+    try {
+      const data = await runTensionsListActive({ limit: 50 });
+      if (!Array.isArray(data)) {
+        throw new Error("invalid tensions payload");
+      }
+      setTensions(data as TensionRow[]);
+    } catch (e) {
+      console.error("tensions refresh error", e);
+      setTensionsError("Failed to load tensions");
+    } finally {
+      setTensionsLoading(false);
+    }
+  }
+
+  async function refreshBaselineFields() {
+    setBaselineLoading(true);
+    setBaselineError("");
+    try {
+      const data = await runBaselineFieldsList({ limit: 100, include_inactive: true });
+      if (!Array.isArray(data)) {
+        throw new Error("invalid baseline payload");
+      }
+      setBaselineFields(data as BaselineFieldRow[]);
+    } catch (e) {
+      console.error("baseline refresh error", e);
+      setBaselineError("Failed to load baseline fields");
+    } finally {
+      setBaselineLoading(false);
     }
   }
 
@@ -200,6 +391,190 @@ export default function Page() {
         },
       });
 
+      const tensionsCreateTool = tool({
+        name: "tensions_create",
+        description:
+          "Capture and store a new tension. Use when user asks to add/save/capture a tension (e.g. 'добавь напряжение').",
+        parameters: z.object({
+          title: z.string().min(1).max(500).describe("Short tension title"),
+          note: z.string().max(5000).optional().describe("Optional details"),
+          charge: z
+            .number()
+            .int()
+            .min(0)
+            .max(5)
+            .default(3)
+            .describe("Intensity from 0 to 5"),
+          vector: z
+            .enum([
+              "unknown",
+              "action",
+              "message",
+              "meeting",
+              "focus_block",
+              "decision",
+              "research",
+              "delegate",
+              "drop",
+            ])
+            .default("unknown")
+            .describe("Preferred form of action"),
+          status: z
+            .enum(["held", "forming", "released", "parked", "dropped"])
+            .default("held")
+            .describe("Lifecycle stage"),
+        }),
+        async execute(args) {
+          return await runTensionsCreate(args);
+        },
+      });
+
+      const tensionsListActiveTool = tool({
+        name: "tensions_list_active",
+        description:
+          "List active tensions. Use when user asks what tensions are currently active/open/held.",
+        parameters: z.object({
+          limit: z
+            .number()
+            .int()
+            .min(1)
+            .max(200)
+            .default(50)
+            .describe("Maximum number of items"),
+        }),
+        async execute(args) {
+          return await runTensionsListActive(args);
+        },
+      });
+
+      const tensionsUpdateTool = tool({
+        name: "tensions_update",
+        description:
+          "Update an existing tension by id. Use when user asks to change charge/vector/status for a specific tension id.",
+        parameters: {
+          type: "object",
+          properties: {
+            id: { type: "integer", minimum: 1, description: "Tension ID" },
+            charge: { type: "integer", minimum: 0, maximum: 5 },
+            vector: {
+              type: "string",
+              enum: [
+                "unknown",
+                "action",
+                "message",
+                "meeting",
+                "focus_block",
+                "decision",
+                "research",
+                "delegate",
+                "drop",
+              ],
+            },
+            status: {
+              type: "string",
+              enum: ["held", "forming", "released", "parked", "dropped"],
+            },
+          },
+          required: ["id"],
+          additionalProperties: false,
+        },
+        async execute(args) {
+          const updated = await runTensionsUpdate(args);
+          await refreshTensions();
+          return updated;
+        },
+      });
+
+      const baselineFieldsListTool = tool({
+        name: "baseline_fields_list",
+        description:
+          "List baseline fields (background domains). Use when user asks to show/list baseline fields.",
+        parameters: {
+          type: "object",
+          properties: {
+            limit: { type: "integer", minimum: 1, maximum: 500, default: 100 },
+            include_inactive: { type: "boolean", default: true },
+          },
+          additionalProperties: false,
+        },
+        async execute(args) {
+          return await runBaselineFieldsList(args);
+        },
+      });
+
+      const baselineFieldsCreateTool = tool({
+        name: "baseline_fields_create",
+        description:
+          "Create a baseline field (background domain like work or pet project).",
+        parameters: {
+          type: "object",
+          properties: {
+            name: { type: "string", minLength: 1, maxLength: 300 },
+            description: { type: "string", maxLength: 3000 },
+            mode: {
+              type: "string",
+              enum: ["any", "focus", "admin", "reflect"],
+              default: "any",
+            },
+            min_quota_min_per_week: { type: "integer", minimum: 0, default: 0 },
+            max_quota_min_per_week: { type: "integer", minimum: 0, default: 0 },
+            preferred_windows: { type: "object", additionalProperties: true, default: {} },
+            is_active: { type: "boolean", default: true },
+            user_id: { type: "string", maxLength: 255 },
+          },
+          required: ["name"],
+          additionalProperties: false,
+        },
+        async execute(args) {
+          const created = await runBaselineFieldsCreate(args);
+          await refreshBaselineFields();
+          return created;
+        },
+      });
+
+      const baselineFieldsUpdateTool = tool({
+        name: "baseline_fields_update",
+        description: "Update an existing baseline field by id.",
+        parameters: {
+          type: "object",
+          properties: {
+            id: { type: "integer", minimum: 1 },
+            name: { type: "string", minLength: 1, maxLength: 300 },
+            description: { type: "string", maxLength: 3000 },
+            mode: { type: "string", enum: ["any", "focus", "admin", "reflect"] },
+            min_quota_min_per_week: { type: "integer", minimum: 0 },
+            max_quota_min_per_week: { type: "integer", minimum: 0 },
+            preferred_windows: { type: "object", additionalProperties: true },
+            is_active: { type: "boolean" },
+          },
+          required: ["id"],
+          additionalProperties: false,
+        },
+        async execute(args) {
+          const updated = await runBaselineFieldsUpdate(args);
+          await refreshBaselineFields();
+          return updated;
+        },
+      });
+
+      const baselineFieldsDeleteTool = tool({
+        name: "baseline_fields_delete",
+        description: "Delete a baseline field by id.",
+        parameters: {
+          type: "object",
+          properties: {
+            id: { type: "integer", minimum: 1 },
+          },
+          required: ["id"],
+          additionalProperties: false,
+        },
+        async execute(args) {
+          const deleted = await runBaselineFieldsDelete(args);
+          await refreshBaselineFields();
+          return deleted;
+        },
+      });
+
       const agent = new RealtimeAgent({
         name: "Assistant",
         instructions: `
@@ -218,12 +593,25 @@ export default function Page() {
           Tension is held until the right moment.
           Release happens only when form is ready.
 
-          Speak calmly.
-          Be concise.
-          If unsure — ask one gentle question.
+          Voice style:
+          HELIX speaks calmly and clearly.
+          Short sentences.
+          No corporate tone.
+          No therapy tone.
+          No motivational speech.
+          Precise. Grounded. Slightly warm.
+
+          Avoid AI-generic phrases like:
+          - "How can I help?"
+          - "Let me know how else I can help."
+          - "Is there anything else?"
+          - "I'm here for you."
+          Use concrete next-step questions instead.
+
+          If unsure — ask one specific question.
 
           Start by saying:
-          "HELIX. How can I assist you?"
+          "HELIX online. State your focus."
         # HELIX — Identity (v0.1)
 
 HELIX (Human–Extended Logic & Intent eXecutor) — это не “ассистент” и не “планировщик”.
@@ -287,11 +675,32 @@ Tool policy:
 - If the user asks about calendar availability, schedule, free time, openings, or meeting slots, you MUST call the tool calendar_free_slots.
 - If the user asks about today's schedule, tomorrow, or a specific date, you MUST call the tool calendar_day.
 - If the user asks to create, schedule, or add a meeting/event, you MUST call the tool calendar_create_event.
+- If the user asks to add/capture/save a tension, you MUST call the tool tensions_create.
+- If the user asks to show current tensions, you MUST call the tool tensions_list_active.
+- If the user asks to modify a tension by id (charge/vector/status), you MUST call the tool tensions_update.
+- If the user asks to list baseline fields, you MUST call the tool baseline_fields_list.
+- If the user asks to add a baseline field, you MUST call the tool baseline_fields_create.
+- If the user asks to update a baseline field by id, you MUST call the tool baseline_fields_update.
+- If the user asks to delete a baseline field by id, you MUST call the tool baseline_fields_delete.
 - Never invent calendar data. Only use tool results.
-- After tool results arrive, summarize options briefly and ask which slot to pick.
+- Never invent tensions data. Only use tool results.
+- Never invent baseline fields data. Only use tool results.
+- After tool results arrive, summarize briefly and ask one focused follow-up question.
+- Never end with generic assistant-style offers.
 
           `,
-        tools: [calendarFreeSlotsTool, calendarTodayTool, calendarCreateTool],
+        tools: [
+          calendarFreeSlotsTool,
+          calendarTodayTool,
+          calendarCreateTool,
+          tensionsCreateTool,
+          tensionsListActiveTool,
+          tensionsUpdateTool,
+          baselineFieldsListTool,
+          baselineFieldsCreateTool,
+          baselineFieldsUpdateTool,
+          baselineFieldsDeleteTool,
+        ],
       });
 
       const session = new RealtimeSession(agent, {
@@ -349,6 +758,8 @@ Tool policy:
 
   useEffect(() => {
     fetchCalendarStatus();
+    refreshTensions();
+    refreshBaselineFields();
   }, []);
 
   return (
@@ -375,6 +786,14 @@ Tool policy:
         Check Calendar
       </button>
 
+      <button onClick={refreshTensions} style={{ marginLeft: 10 }}>
+        Refresh Tensions
+      </button>
+
+      <button onClick={refreshBaselineFields} style={{ marginLeft: 10 }}>
+        Refresh Baseline
+      </button>
+
       <a
         href="http://localhost:8000/oauth/google/start"
         style={{ marginLeft: 10 }}
@@ -394,6 +813,108 @@ Tool policy:
         Calendar: <b>{calendarStatus}</b>
         {calendarReason ? ` (${calendarReason})` : ""}
       </p>
+
+      <h2>Active Tensions</h2>
+      {tensionsLoading ? <p>Loading tensions...</p> : null}
+      {tensionsError ? <p>{tensionsError}</p> : null}
+      <table
+        style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          marginTop: 8,
+        }}
+      >
+        <thead>
+          <tr>
+            <th style={{ textAlign: "left", borderBottom: "1px solid #ccc" }}>
+              ID
+            </th>
+            <th style={{ textAlign: "left", borderBottom: "1px solid #ccc" }}>
+              Title
+            </th>
+            <th style={{ textAlign: "left", borderBottom: "1px solid #ccc" }}>
+              Status
+            </th>
+            <th style={{ textAlign: "left", borderBottom: "1px solid #ccc" }}>
+              Charge
+            </th>
+            <th style={{ textAlign: "left", borderBottom: "1px solid #ccc" }}>
+              Vector
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {tensions.map((t) => (
+            <tr key={t.id}>
+              <td style={{ padding: "6px 0" }}>{t.id}</td>
+              <td style={{ padding: "6px 0" }}>{t.title}</td>
+              <td style={{ padding: "6px 0" }}>{t.status}</td>
+              <td style={{ padding: "6px 0" }}>{t.charge}</td>
+              <td style={{ padding: "6px 0" }}>{t.vector}</td>
+            </tr>
+          ))}
+          {!tensionsLoading && tensions.length === 0 ? (
+            <tr>
+              <td colSpan={5} style={{ paddingTop: 8 }}>
+                No active tensions
+              </td>
+            </tr>
+          ) : null}
+        </tbody>
+      </table>
+
+      <h2 style={{ marginTop: 20 }}>Baseline Fields</h2>
+      {baselineLoading ? <p>Loading baseline fields...</p> : null}
+      {baselineError ? <p>{baselineError}</p> : null}
+      <table
+        style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          marginTop: 8,
+        }}
+      >
+        <thead>
+          <tr>
+            <th style={{ textAlign: "left", borderBottom: "1px solid #ccc" }}>
+              ID
+            </th>
+            <th style={{ textAlign: "left", borderBottom: "1px solid #ccc" }}>
+              Name
+            </th>
+            <th style={{ textAlign: "left", borderBottom: "1px solid #ccc" }}>
+              Mode
+            </th>
+            <th style={{ textAlign: "left", borderBottom: "1px solid #ccc" }}>
+              Min/Week
+            </th>
+            <th style={{ textAlign: "left", borderBottom: "1px solid #ccc" }}>
+              Max/Week
+            </th>
+            <th style={{ textAlign: "left", borderBottom: "1px solid #ccc" }}>
+              Active
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {baselineFields.map((f) => (
+            <tr key={f.id}>
+              <td style={{ padding: "6px 0" }}>{f.id}</td>
+              <td style={{ padding: "6px 0" }}>{f.name}</td>
+              <td style={{ padding: "6px 0" }}>{f.mode}</td>
+              <td style={{ padding: "6px 0" }}>{f.min_quota_min_per_week}</td>
+              <td style={{ padding: "6px 0" }}>{f.max_quota_min_per_week}</td>
+              <td style={{ padding: "6px 0" }}>{f.is_active ? "yes" : "no"}</td>
+            </tr>
+          ))}
+          {!baselineLoading && baselineFields.length === 0 ? (
+            <tr>
+              <td colSpan={6} style={{ paddingTop: 8 }}>
+                No baseline fields
+              </td>
+            </tr>
+          ) : null}
+        </tbody>
+      </table>
     </main>
   );
 }

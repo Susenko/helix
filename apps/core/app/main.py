@@ -2,13 +2,14 @@ from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import httpx
-
+from app.api.routers.tensions import router as tensions_router
 from app.settings import settings
 from app.infra.db.session import engine
 from app.infra.db.init_db import init_db
 
 from app.api.routers.oauth_google import router as oauth_google_router
 from app.api.routers.calendar import router as calendar_router
+from app.api.routers.baseline_fields import router as baseline_fields_router
 from app.realtime import create_client_secret
 
 app = FastAPI(title="HELIX Core")
@@ -32,6 +33,8 @@ async def health():
 
 app.include_router(oauth_google_router)
 app.include_router(calendar_router)
+app.include_router(tensions_router)
+app.include_router(baseline_fields_router)
 
 
 @app.post("/realtime/client_secret")

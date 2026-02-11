@@ -20,6 +20,8 @@ The backend is a Python application using **FastAPI**. It is located in `apps/co
 Routers are located in `app/api/routers/`.
 - **Calendar (`/calendar`)**: Handles Google Calendar operations (list events, find free slots).
 - **OAuth (`/oauth`)**: Manages Google OAuth 2.0 flow for authentication.
+- **Tensions (`/tensions`)**: Create/list/update tension containers (`POST /tensions`, `GET /tensions/active`, `PATCH /tensions/{id}`).
+- **Baseline Fields (`/baseline-fields`)**: CRUD for background domains (`POST /baseline-fields`, `GET /baseline-fields`, `PATCH /baseline-fields/{id}`, `DELETE /baseline-fields/{id}`).
 - **Realtime**: dedicated endpoints for realtime voice/data connections.
 
 ## Domain Services
