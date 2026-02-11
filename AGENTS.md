@@ -1,0 +1,91 @@
+# HELIX Project Structure & Agents
+
+## Project Overview
+HELIX is a monorepo application integrating a FastAPI backend with a Next.js frontend, designed to work as an intelligent agent system with Google Calendar integration and Realtime capabilities.
+
+## Detailed Documentation
+The project structure is detailed in the following agent documentation files:
+
+- **[Infrastructure](./agents/01_infrastructure.md)**: Docker setup, services, and networking.
+- **[Backend Architecture](./agents/02_backend_core.md)**: Python/FastAPI core, database models, and API structure.
+- **[Frontend Architecture](./agents/03_frontend_web.md)**: Next.js web application and OpenAI Agents SDK usage.
+- **[Domain Logic](./agents/04_domain_logic.md)**: Business logic, Google OAuth/Calendar integration, and core concepts like "Tensions".
+
+## Documentation Update Rule
+If an agent makes structural or architectural changes (folders, services, modules, routes, integrations, environment variables, or workflows), the agent must update this `AGENTS.md` in the same task.
+
+When relevant, the agent must also update corresponding detailed docs in `agents/*.md` so the high-level index and detailed pages stay consistent.
+
+## Quick Start (Project Root)
+The project is orchestrated via `docker/compose.yml`.
+
+### Key Commands
+- **Start System**: `docker compose -f docker/compose.yml up --build`
+- **Stop System**: `docker compose -f docker/compose.yml down`
+- **Backend API**: Accessible at `http://localhost:8000`
+- **Frontend UI**: Accessible at `http://localhost:3000`
+- **DB Admin**: Accessible at `http://localhost:8080`
+
+## Service Map (Docker Compose)
+- `helix-core`: FastAPI backend (`apps/core`), exposed on `:8000`, depends on `postgres` and `redis`.
+- `helix-web`: Next.js frontend (`apps/web`), exposed on `:3000`, depends on `helix-core`.
+- `postgres`: PostgreSQL 16 (`:5432`) with volume `pgdata`.
+- `redis`: Redis 7 (`:6379`).
+- `pgadmin`: PgAdmin 4 (`:8080`) with volume `pgadmin_data`.
+
+## Environment Variables (.env)
+The root `.env` file is loaded by both `helix-core` and `helix-web` via Docker Compose.
+
+### Core Required
+- `OPENAI_API_KEY`: Used for OpenAI-powered features.
+- `HELIX_ALLOWED_ORIGIN`: CORS allowed origin for backend.
+- `DATABASE_URL`: SQLAlchemy async connection string for Postgres.
+
+### Google Integration
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GOOGLE_REDIRECT_URI`
+
+### Web Required
+- `NEXT_PUBLIC_CORE_URL`: Backend base URL used by frontend/BFF routes.
+
+## Development Workflows
+
+### 1) Full stack via Docker (recommended)
+- `docker compose -f docker/compose.yml up --build`
+- Logs: `docker compose -f docker/compose.yml logs -f helix-core helix-web`
+
+### 2) Web app only (inside `apps/web`)
+- `npm run dev`
+- Build check: `npm run build`
+
+### 3) Core app and DB migrations (inside `apps/core`)
+- Run API directly: `uvicorn app.main:app --host 0.0.0.0 --port 8000`
+- Apply migrations: `alembic upgrade head`
+- Create migration: `alembic revision --autogenerate -m "message"`
+
+## Where to Look First
+- API entrypoint and router mounting: `apps/core/app/main.py`
+- Runtime settings/env parsing: `apps/core/app/settings.py`
+- Domain services (OAuth/Calendar/free slots): `apps/core/app/domain/services/`
+- DB models: `apps/core/app/infra/db/models/`
+- Frontend app root: `apps/web/app/page.tsx`
+- Frontend BFF routes: `apps/web/app/api/helix/`
+
+## Documentation Ownership Map
+- Use `agents/01_infrastructure.md` for containers, networking, ports, and runtime topology.
+- Use `agents/02_backend_core.md` for FastAPI layers, DB, routers, and backend internals.
+- Use `agents/03_frontend_web.md` for App Router structure and frontend integration points.
+- Use `agents/04_domain_logic.md` for Google OAuth/Calendar flow and domain concepts.
+
+## Directory Structure
+```
+root/
+├── apps/
+│   ├── core/           # Backend (FastAPI, Alembic, SQLAlchemy)
+│   └── web/            # Frontend (Next.js 15, React 19)
+├── docker/
+│   └── compose.yml     # Docker Compose definition
+├── manifests/          # Project principles and high-level docs
+└── agents/             # Detailed system documentation (Auto-generated)
+```

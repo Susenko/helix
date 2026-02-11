@@ -1,0 +1,18 @@
+# Frontend Architecture (Web)
+
+## Overview
+The frontend is built with **Next.js 15** (using React 19) and TypeScript. It is located in `apps/web`.
+
+## Key Technologies
+- **Next.js App Router**: Uses the modern `/app` directory structure.
+- **OpenAI Agents SDK**: `@openai/agents` is used, suggesting integration with OpenAI's realtime or agent capabilities.
+- **Zod**: Used for schema validation.
+
+## Structure
+- **`app/page.tsx`**: Main entry point for the UI.
+- **`app/api/`**: Next.js API Routes (BFF - Backend for Frontend pattern).
+  - `helix/client-secret`: Proxies requests to get ephemeral keys for realtime sessions.
+  - `helix/session`: Manages session state.
+
+## Integration
+The frontend communicates with `api/helix/*` routes which in turn communicate with the Core backend or external services like OpenAI.
