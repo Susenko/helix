@@ -16,6 +16,7 @@ menu() {
   echo "8) rebuild web"
   echo "9) rebuild core"
   echo "51) shell core"
+  echo "52) ssh staging"
   echo "0) exit"
   echo -n "> "
 }
@@ -49,7 +50,11 @@ while true; do
     7) $DC ps ;;
     8) $DC build --no-cache helix-web ;;
     9) $DC build --no-cache helix-core ;;
-    51) docker exec -it docker-helix-core-1 bash ;;
+    51) docker exec -it helix-core bash ;;
+    52)
+            echo "🔌 Подключение к staging серверу..."
+            ssh root@109.123.252.5
+            ;;
     0) exit 0 ;;
     *) echo "Unknown option" ;;
   esac

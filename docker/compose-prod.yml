@@ -14,6 +14,7 @@ services:
     depends_on:
       - postgres
       - redis
+    restart: unless-stopped
 
   helix-web:
     container_name: helix-web
@@ -29,19 +30,8 @@ services:
       - "3006:3000"
     depends_on:
       - helix-core
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: helix-pgadmin
-    restart: always
-    ports:
-      - "8080:80"
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@helix.com
-      PGADMIN_DEFAULT_PASSWORD: secret123
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
-    depends_on:
-      - postgres
+    restart: unless-stopped
+
   postgres:
     container_name: helix-postgres
     image: postgres:16
@@ -53,13 +43,14 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
 
   redis:
     container_name: helix-redis
     image: redis:7
     ports:
       - "6379:6379"
+    restart: unless-stopped
 
 volumes:
   pgdata:
-  pgadmin_data:

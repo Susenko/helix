@@ -28,16 +28,18 @@ The project is orchestrated via `docker/compose.yml`.
 - **Start System**: `docker compose -f docker/compose.yml up --build`
 - **Stop System**: `docker compose -f docker/compose.yml down`
 - **Backend API**: Accessible at `http://localhost:8000`
-- **Frontend UI**: Accessible at `http://localhost:3000`
+- **Frontend UI**: Accessible at `http://localhost:3006`
 - **DB Admin**: Accessible at `http://localhost:8080`
+- **Prod Compose**: `docker compose -f docker/compose-prod.yml up --build`
+- **Deploy Script**: `./deploy/deploy.sh <user@host> [remote_path]`
 
 ## Service Map (Docker Compose)
 
-- `helix-core`: FastAPI backend (`apps/core`), exposed on `:8000`, depends on `postgres` and `redis`.
-- `helix-web`: Next.js frontend (`apps/web`), exposed on `:3000`, depends on `helix-core`.
-- `postgres`: PostgreSQL 16 (`:5432`) with volume `pgdata`.
-- `redis`: Redis 7 (`:6379`).
-- `pgadmin`: PgAdmin 4 (`:8080`) with volume `pgadmin_data`.
+- `helix-core`: FastAPI backend (`apps/core`), container `helix-core`, exposed on `:8000`, depends on `postgres` and `redis`.
+- `helix-web`: Next.js frontend (`apps/web`), container `helix-web`, exposed on host `:3006` (container `:3000`), depends on `helix-core`.
+- `postgres`: PostgreSQL 16, container `helix-postgres` (`:5432`) with volume `pgdata`.
+- `redis`: Redis 7, container `helix-redis` (`:6379`).
+- `pgadmin`: PgAdmin 4, container `helix-pgadmin` (`:8080`) with volume `pgadmin_data` (dev compose only).
 
 ## Environment Variables (.env)
 
@@ -65,6 +67,16 @@ The root `.env` file is loaded by both `helix-core` and `helix-web` via Docker C
 
 - `docker compose -f docker/compose.yml up --build`
 - Logs: `docker compose -f docker/compose.yml logs -f helix-core helix-web`
+
+### 1.1) Production profile (without PgAdmin)
+
+- `docker compose -f docker/compose-prod.yml up --build`
+- `docker compose -f docker/compose-prod.yml down`
+
+### 1.2) Remote deploy helper
+
+- `./deploy/deploy.sh <user@host> [remote_path]`
+- Requires Docker + Compose plugin on server and `.env` in remote project path.
 
 ### 2) Web app only (inside `apps/web`)
 
@@ -103,7 +115,9 @@ root/
 │   ├── core/           # Backend (FastAPI, Alembic, SQLAlchemy)
 │   └── web/            # Frontend (Next.js 15, React 19)
 ├── docker/
-│   └── compose.yml     # Docker Compose definition
+│   ├── compose.yml      # Dev Docker Compose definition (with PgAdmin)
+│   └── compose-prod.yml # Prod Docker Compose definition (without PgAdmin)
+├── deploy/             # Deploy helper scripts
 ├── manifests/          # Project principles and high-level docs
 └── agents/             # Detailed system documentation (Auto-generated)
 ```
