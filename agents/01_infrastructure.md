@@ -25,14 +25,14 @@ There are two compose profiles:
 ### 3. Postgres (`postgres`)
 - **Image**: `postgres:16`
 - **Container name**: `helix-postgres`
-- **Port**: `5432`
+- **Port**: dev `5432`, prod internal-only (no host publish)
 - **Description**: Primary relational database for storing user data, settings, and application state.
 - **Volume**: `pgdata`
 
 ### 4. Redis (`redis`)
 - **Image**: `redis:7`
 - **Container name**: `helix-redis`
-- **Port**: `6379`
+- **Port**: dev `6379`, prod internal-only (no host publish)
 - **Description**: In-memory data store, likely used for caching or task queues (if implemented).
 
 ### 5. PgAdmin (`pgadmin`)

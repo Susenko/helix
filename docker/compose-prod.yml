@@ -39,8 +39,6 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_USER=postgres
       - POSTGRES_DB=helix
-    ports:
-      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
@@ -48,8 +46,6 @@ services:
   redis:
     container_name: helix-redis
     image: redis:7
-    ports:
-      - "6379:6379"
     restart: unless-stopped
 
 volumes:

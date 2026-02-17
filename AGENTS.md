@@ -37,8 +37,8 @@ The project is orchestrated via `docker/compose.yml`.
 
 - `helix-core`: FastAPI backend (`apps/core`), container `helix-core`, exposed on `:8000`, depends on `postgres` and `redis`.
 - `helix-web`: Next.js frontend (`apps/web`), container `helix-web`, exposed on host `:3006` (container `:3000`), depends on `helix-core`.
-- `postgres`: PostgreSQL 16, container `helix-postgres` (`:5432`) with volume `pgdata`.
-- `redis`: Redis 7, container `helix-redis` (`:6379`).
+- `postgres`: PostgreSQL 16, container `helix-postgres` (dev: `:5432`, prod: internal-only) with volume `pgdata`.
+- `redis`: Redis 7, container `helix-redis` (dev: `:6379`, prod: internal-only).
 - `pgadmin`: PgAdmin 4, container `helix-pgadmin` (`:8080`) with volume `pgadmin_data` (dev compose only).
 
 ## Environment Variables (.env)
