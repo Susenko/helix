@@ -21,6 +21,7 @@ There are two compose profiles:
 - **Port**: host `3006` -> container `3000`
 - **Description**: The frontend interface built with Next.js 15. Provides the user interface for interacting with Helix agents and tools.
 - **Dependencies**: `helix-core` (for API calls)
+- **Prod runtime**: `docker/compose-prod.yml` uses `apps/web/Dockerfile.prod`, which runs `npm run build` during image build and starts with `npm run start`.
 
 ### 3. Postgres (`postgres`)
 - **Image**: `postgres:16`
@@ -46,6 +47,9 @@ There are two compose profiles:
 ## Network
 Internal communication happens via the default Docker bridge network. 
 - `helix-web` communicates with `helix-core` via the service name `helix-core:8000`.
+- `helix-web` is additionally attached to external Docker network `shared-net` for host/service sharing with other stacks.
+- `shared-net` must exist before `compose up`:
+  `docker network create shared-net` (one-time).
 
 ## Environment Variables
 Configuration is managed via a `.env` file in the root directory, passed to containers via `env_file`.
@@ -53,6 +57,7 @@ Key variables:
 - `HELIX_ALLOWED_ORIGIN`: CORS settings for the backend (should match frontend host, now `http://localhost:3006`).
 - `OPENAI_API_KEY`: API key for AI features.
 - `NEXT_PUBLIC_CORE_URL`: Public URL for the backend API.
+- `NEXT_PUBLIC_CORE_HTTP_URL`: Browser-facing backend URL for client-side fetch requests in web app.
 
 ## Deployment Helper
 - `deploy/deploy.sh` syncs the repository to a remote host and runs:

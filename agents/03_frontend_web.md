@@ -3,6 +3,7 @@
 ## Overview
 The frontend is built with **Next.js 15** (using React 19) and TypeScript. It is located in `apps/web`.
 In Docker, it runs as service/container `helix-web` on host port `3006` (container port `3000`).
+Production image is built from `apps/web/Dockerfile.prod` using `npm run build` and starts via `npm run start`.
 
 ## Key Technologies
 - **Next.js App Router**: Uses the modern `/app` directory structure.

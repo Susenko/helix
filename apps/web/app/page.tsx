@@ -32,6 +32,7 @@ type BaselineFieldRow = {
 export default function Page() {
   const [status, setStatus] = useState("idle");
   const [lastTranscript, setLastTranscript] = useState("");
+  const [voiceError, setVoiceError] = useState("");
   const [calendarStatus, setCalendarStatus] = useState<
     "unknown" | "checking" | "connected" | "disconnected" | "error"
   >("unknown");
@@ -317,6 +318,23 @@ export default function Page() {
 
   async function enableVoice() {
     setStatus("connecting");
+    setVoiceError("");
+
+    if (!window.isSecureContext) {
+      setStatus("error");
+      setVoiceError(
+        "Voice requires a secure context. Open the app via HTTPS (or localhost).",
+      );
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setStatus("error");
+      setVoiceError(
+        "Microphone API is unavailable in this browser/context. Use HTTPS and allow microphone access.",
+      );
+      return;
+    }
 
     try {
       const clientSecret = await fetchClientSecret();
@@ -797,7 +815,7 @@ Tool policy:
       </button>
 
       <a
-        href="http://localhost:8000/oauth/google/start"
+        href={`${CORE_HTTP}/oauth/google/start`}
         style={{ marginLeft: 10 }}
       >
         Google OAuth
@@ -806,6 +824,11 @@ Tool policy:
       <p>
         Status: <b>{status}</b>
       </p>
+      {voiceError ? (
+        <p>
+          Voice error: <b>{voiceError}</b>
+        </p>
+      ) : null}
 
       <p>
         Last assistant transcript: <b>{lastTranscript || "—"}</b>

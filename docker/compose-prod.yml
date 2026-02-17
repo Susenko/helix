@@ -18,16 +18,22 @@ services:
 
   helix-web:
     container_name: helix-web
-    build: ../apps/web
+    build:
+      context: ../apps/web
+      dockerfile: Dockerfile.prod
+      args:
+        NEXT_PUBLIC_CORE_URL: ${NEXT_PUBLIC_CORE_URL}
+        NEXT_PUBLIC_CORE_HTTP_URL: ${NEXT_PUBLIC_CORE_HTTP_URL}
     env_file:
       - ../.env
     environment:
       - NEXT_PUBLIC_CORE_URL=${NEXT_PUBLIC_CORE_URL}
-    volumes:
-      - ../apps/web:/app
-      - /app/node_modules
+      - NEXT_PUBLIC_CORE_HTTP_URL=${NEXT_PUBLIC_CORE_HTTP_URL}
     ports:
       - "3006:3000"
+    networks:
+      - default
+      - shared-net
     depends_on:
       - helix-core
     restart: unless-stopped
@@ -50,3 +56,7 @@ services:
 
 volumes:
   pgdata:
+
+networks:
+  shared-net:
+    external: true

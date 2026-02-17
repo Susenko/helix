@@ -27,6 +27,9 @@ services:
       - /app/node_modules
     ports:
       - "3006:3000"
+    networks:
+      - default
+      - shared-net
     depends_on:
       - helix-core
   pgadmin:
@@ -63,3 +66,7 @@ services:
 volumes:
   pgdata:
   pgadmin_data:
+
+networks:
+  shared-net:
+    external: true

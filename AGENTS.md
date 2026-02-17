@@ -37,6 +37,8 @@ The project is orchestrated via `docker/compose.yml`.
 
 - `helix-core`: FastAPI backend (`apps/core`), container `helix-core`, exposed on `:8000`, depends on `postgres` and `redis`.
 - `helix-web`: Next.js frontend (`apps/web`), container `helix-web`, exposed on host `:3006` (container `:3000`), depends on `helix-core`.
+  Production profile builds web via `apps/web/Dockerfile.prod` (`npm run build` + `npm run start`).
+  Networking: connected to default project network and external `shared-net`.
 - `postgres`: PostgreSQL 16, container `helix-postgres` (dev: `:5432`, prod: internal-only) with volume `pgdata`.
 - `redis`: Redis 7, container `helix-redis` (dev: `:6379`, prod: internal-only).
 - `pgadmin`: PgAdmin 4, container `helix-pgadmin` (`:8080`) with volume `pgadmin_data` (dev compose only).
@@ -61,6 +63,7 @@ The root `.env` file is loaded by both `helix-core` and `helix-web` via Docker C
 
 - `NEXT_PUBLIC_CORE_URL`: Backend base URL used by frontend/BFF routes.
 - `NEXT_PUBLIC_CORE_HTTP_URL`: Public backend URL for browser-side requests from `app/page.tsx` (falls back to `NEXT_PUBLIC_CORE_URL`).
+  In production this variable is passed both at runtime and as Docker build arg for Next.js client bundle.
 
 ## Development Workflows
 
@@ -114,7 +117,7 @@ The root `.env` file is loaded by both `helix-core` and `helix-web` via Docker C
 root/
 ├── apps/
 │   ├── core/           # Backend (FastAPI, Alembic, SQLAlchemy)
-│   └── web/            # Frontend (Next.js 15, React 19)
+│   └── web/            # Frontend (Next.js 15, React 19, Dockerfile.prod for prod build)
 ├── docker/
 │   ├── compose.yml      # Dev Docker Compose definition (with PgAdmin)
 │   └── compose-prod.yml # Prod Docker Compose definition (without PgAdmin)
