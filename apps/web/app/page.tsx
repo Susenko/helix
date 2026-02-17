@@ -5,7 +5,9 @@ import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 
 const CORE_HTTP =
-  process.env.NEXT_PUBLIC_CORE_HTTP_URL || "http://localhost:8000";
+  process.env.NEXT_PUBLIC_CORE_HTTP_URL ||
+  process.env.NEXT_PUBLIC_CORE_URL ||
+  "http://localhost:8000";
 
 type TensionRow = {
   id: number;

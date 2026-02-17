@@ -22,3 +22,7 @@ The frontend communicates with `api/helix/*` routes which in turn communicate wi
 - Voice agent tools for calendar operations and tension management.
 - Voice agent tools for baseline fields CRUD (`baseline_fields_list/create/update/delete`).
 - Dashboard tables on `app/page.tsx` for active tensions and baseline fields, each with manual refresh buttons.
+
+## Runtime Env Notes
+- Browser-side calls from `app/page.tsx` use `NEXT_PUBLIC_CORE_HTTP_URL` (fallback: `NEXT_PUBLIC_CORE_URL`).
+- BFF routes (`app/api/helix/*`) use `NEXT_PUBLIC_CORE_URL` for internal container-to-container access.

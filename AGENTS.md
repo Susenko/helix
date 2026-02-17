@@ -60,6 +60,7 @@ The root `.env` file is loaded by both `helix-core` and `helix-web` via Docker C
 ### Web Required
 
 - `NEXT_PUBLIC_CORE_URL`: Backend base URL used by frontend/BFF routes.
+- `NEXT_PUBLIC_CORE_HTTP_URL`: Public backend URL for browser-side requests from `app/page.tsx` (falls back to `NEXT_PUBLIC_CORE_URL`).
 
 ## Development Workflows
 
