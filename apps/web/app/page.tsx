@@ -766,7 +766,16 @@ Tool policy:
     if (!session) return;
     setStatus("disconnecting");
     try {
-      await session.disconnect?.();
+      const closable = session as unknown as {
+        disconnect?: () => Promise<void> | void;
+        close?: () => Promise<void> | void;
+      };
+
+      if (typeof closable.disconnect === "function") {
+        await closable.disconnect();
+      } else if (typeof closable.close === "function") {
+        await closable.close();
+      }
     } catch (e) {
       console.error("disconnect error", e);
     } finally {
