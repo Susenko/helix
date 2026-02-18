@@ -36,9 +36,9 @@ The project is orchestrated via `docker/compose.yml`.
 ## Service Map (Docker Compose)
 
 - `helix-core`: FastAPI backend (`apps/core`), container `helix-core`, exposed on `:8000`, depends on `postgres` and `redis`.
+- `helix-telegram-bot`: Telegram bot worker (`apps/core`, module `app.telegram_bot`), container `helix-telegram-bot`, runs long-polling with `TELEGRAM_BOT_TOKEN`, depends on `helix-core`.
 - `helix-web`: Next.js frontend (`apps/web`), container `helix-web`, exposed on host `:3006` (container `:3000`), depends on `helix-core`.
   Production profile builds web via `apps/web/Dockerfile.prod` (`npm run build` + `npm run start`).
-  Networking: connected to default project network and external `shared-net`.
 - `postgres`: PostgreSQL 16, container `helix-postgres` (dev: `:5432`, prod: internal-only) with volume `pgdata`.
 - `redis`: Redis 7, container `helix-redis` (dev: `:6379`, prod: internal-only).
 - `pgadmin`: PgAdmin 4, container `helix-pgadmin` (`:8080`) with volume `pgadmin_data` (dev compose only).
@@ -52,6 +52,7 @@ The root `.env` file is loaded by both `helix-core` and `helix-web` via Docker C
 - `OPENAI_API_KEY`: Used for OpenAI-powered features.
 - `HELIX_ALLOWED_ORIGIN`: CORS allowed origin for backend.
 - `DATABASE_URL`: SQLAlchemy async connection string for Postgres.
+- `TELEGRAM_BOT_TOKEN`: Token for `helix-telegram-bot` (Telegram long-polling worker).
 
 ### Google Integration
 
@@ -70,7 +71,7 @@ The root `.env` file is loaded by both `helix-core` and `helix-web` via Docker C
 ### 1) Full stack via Docker (recommended)
 
 - `docker compose -f docker/compose.yml up --build`
-- Logs: `docker compose -f docker/compose.yml logs -f helix-core helix-web`
+- Logs: `docker compose -f docker/compose.yml logs -f helix-core helix-web helix-telegram-bot`
 
 ### 1.1) Production profile (without PgAdmin)
 
@@ -90,12 +91,14 @@ The root `.env` file is loaded by both `helix-core` and `helix-web` via Docker C
 ### 3) Core app and DB migrations (inside `apps/core`)
 
 - Run API directly: `uvicorn app.main:app --host 0.0.0.0 --port 8000`
+- Run Telegram bot directly: `python -m app.telegram_bot`
 - Apply migrations: `alembic upgrade head`
 - Create migration: `alembic revision --autogenerate -m "message"`
 
 ## Where to Look First
 
 - API entrypoint and router mounting: `apps/core/app/main.py`
+- Telegram bot entrypoint: `apps/core/app/telegram_bot.py`
 - Runtime settings/env parsing: `apps/core/app/settings.py`
 - Domain services (OAuth/Calendar/free slots): `apps/core/app/domain/services/`
 - Tensions API (`POST /tensions`, `GET /tensions/active`, `PATCH /tensions/{id}`): `apps/core/app/api/routers/tensions.py`

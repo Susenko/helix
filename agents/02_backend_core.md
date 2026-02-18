@@ -6,6 +6,7 @@ The backend is a Python application using **FastAPI**. It is located in `apps/co
 ## Structure
 - **Entry Point**: `app/main.py` - Sets up the FastAPI app, CORS middleware, and mounts routers.
 - **Configuration**: `app/settings.py` - Manages environment variables and app settings.
+- **Telegram Worker**: `app/telegram_bot.py` - Runs Telegram polling and handles bot commands (currently `/start`).
 
 ## Database Layer
 - **ORM**: SQLAlchemy (Async)

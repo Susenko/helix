@@ -15,4 +15,7 @@ class Settings(BaseSettings):
     # user context
     user_timezone: str = "Europe/Bucharest"
 
+    # Telegram bot
+    telegram_bot_token: str = ""
+
 settings = Settings()

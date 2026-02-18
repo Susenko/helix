@@ -15,6 +15,19 @@ services:
       - postgres
       - redis
 
+  helix-telegram-bot:
+    container_name: helix-telegram-bot
+    build: ../apps/core
+    env_file:
+      - ../.env
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+    command: ["python", "-m", "app.telegram_bot"]
+    volumes:
+      - ../apps/core:/app
+    depends_on:
+      - helix-core
+
   helix-web:
     container_name: helix-web
     build: ../apps/web
@@ -27,9 +40,6 @@ services:
       - /app/node_modules
     ports:
       - "3006:3000"
-    networks:
-      - default
-      - shared-net
     depends_on:
       - helix-core
   pgadmin:
@@ -66,7 +76,3 @@ services:
 volumes:
   pgdata:
   pgadmin_data:
-
-networks:
-  shared-net:
-    external: true

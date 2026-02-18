@@ -16,6 +16,20 @@ services:
       - redis
     restart: unless-stopped
 
+  helix-telegram-bot:
+    container_name: helix-telegram-bot
+    build: ../apps/core
+    env_file:
+      - ../.env
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+    command: ["python", "-m", "app.telegram_bot"]
+    volumes:
+      - ../apps/core:/app
+    depends_on:
+      - helix-core
+    restart: unless-stopped
+
   helix-web:
     container_name: helix-web
     build:
@@ -31,9 +45,6 @@ services:
       - NEXT_PUBLIC_CORE_HTTP_URL=${NEXT_PUBLIC_CORE_HTTP_URL}
     ports:
       - "3006:3000"
-    networks:
-      - default
-      - shared-net
     depends_on:
       - helix-core
     restart: unless-stopped
@@ -56,7 +67,3 @@ services:
 
 volumes:
   pgdata:
-
-networks:
-  shared-net:
-    external: true
