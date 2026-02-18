@@ -9,6 +9,8 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     volumes:
       - ../apps/core:/app
+    ports:
+      - "8008:8000"
     depends_on:
       - postgres
       - redis
