@@ -6,6 +6,7 @@ menu() {
   echo ""
   echo "HELIX menu"
   echo "1) up (build)"
+  echo "17) up (no build)"
   echo "2) down"
   echo "3) delete all containers"
   echo "4) restart core"
@@ -41,6 +42,7 @@ while true; do
           sleep 2
         done
         ;;
+    17) $DC up -d;;
     2) $DC down ;;
     3) docker stop $(docker ps -a -q) && docker rm $(docker ps -a -q) && docker rmi $(docker images -a -q) && docker network prune -f && docker volume rm $(docker volume ls -q) ;;
     4) $DC restart helix-core ;;
@@ -53,7 +55,7 @@ while true; do
     51) docker exec -it helix-core bash ;;
     52)
             echo "🔌 Подключение к staging серверу..."
-            ssh root@109.123.252.5
+            ssh root@213.199.52.200
             ;;
     0) exit 0 ;;
     *) echo "Unknown option" ;;
