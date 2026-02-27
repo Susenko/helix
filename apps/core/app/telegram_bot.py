@@ -13,6 +13,7 @@ from telegram.ext import (
 from app.infra.db.session import SessionLocal
 from app.infra.repos.tensions_repo import TensionsRepo
 from app.settings import settings
+from app.telegram.commands.return_cmd import cmd_return
 
 
 logging.basicConfig(
@@ -27,6 +28,7 @@ START_MESSAGE = (
     "Команды:\n"
     "/add - добавить напряжение\n"
     "/list - показать активные напряжения\n"
+    "/return - вернуть одно напряжение в фокус\n"
     "/cancel - отменить текущий диалог"
 )
 
@@ -189,6 +191,7 @@ def run() -> None:
     application = Application.builder().token(settings.telegram_bot_token).build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("list", list_tensions))
+    application.add_handler(CommandHandler("return", cmd_return))
     application.add_handler(CommandHandler("cancel", cancel))
     application.add_handler(
         ConversationHandler(

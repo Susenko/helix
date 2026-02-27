@@ -99,6 +99,7 @@ The root `.env` file is loaded by both `helix-core` and `helix-web` via Docker C
 
 - API entrypoint and router mounting: `apps/core/app/main.py`
 - Telegram bot entrypoint: `apps/core/app/telegram_bot.py`
+- Telegram `/return` command selection logic: `apps/core/app/telegram/commands/return_cmd.py`
 - Runtime settings/env parsing: `apps/core/app/settings.py`
 - Domain services (OAuth/Calendar/free slots): `apps/core/app/domain/services/`
 - Tensions API (`POST /tensions`, `GET /tensions/active`, `PATCH /tensions/{id}`): `apps/core/app/api/routers/tensions.py`
