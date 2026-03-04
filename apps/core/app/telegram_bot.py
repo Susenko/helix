@@ -29,10 +29,11 @@ START_MESSAGE = (
     "/add - добавить напряжение\n"
     "/list - показать активные напряжения\n"
     "/return - вернуть одно напряжение в фокус\n"
+    "/release - отметить, что с напряжением уже справился\n"
     "/cancel - отменить текущий диалог"
 )
 
-TITLE, CHARGE, VECTOR = range(3)
+TITLE, CHARGE, VECTOR, RELEASE_ID, RELEASE_NOTE = range(5)
 
 ALLOWED_VECTORS = {
     "unknown",
@@ -56,6 +57,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.pop("new_tension", None)
+    context.user_data.pop("release_tension", None)
     if update.message is not None:
         await update.message.reply_text("Ок, отменено.")
     return ConversationHandler.END
@@ -182,6 +184,95 @@ async def list_tensions(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         await update.message.reply_text(chunk)
 
 
+async def release_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if update.message is None:
+        return ConversationHandler.END
+
+    async with SessionLocal() as session:
+        repo = TensionsRepo(session)
+        tensions = await repo.list_active(limit=50)
+
+    if not tensions:
+        await update.message.reply_text("Активных напряжений нет.")
+        return ConversationHandler.END
+
+    lines = ["Выбери напряжение для релиза (введи номер):"]
+    for t in tensions:
+        lines.append(f"#{t.id} | {t.title} | charge={t.charge} | vector={t.vector}")
+
+    context.user_data["release_tension"] = {"active_ids": {t.id for t in tensions}}
+    for chunk in _format_tensions_chunks(lines):
+        await update.message.reply_text(chunk)
+    await update.message.reply_text("Напиши номер, например: 12 или #12")
+    return RELEASE_ID
+
+
+async def release_pick_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if update.message is None or update.message.text is None:
+        return RELEASE_ID
+
+    raw = update.message.text.strip()
+    if raw.startswith("#"):
+        raw = raw[1:]
+
+    try:
+        tension_id = int(raw)
+    except ValueError:
+        await update.message.reply_text("Нужно указать числовой номер напряжения, например 12.")
+        return RELEASE_ID
+
+    active_ids = (context.user_data.get("release_tension") or {}).get("active_ids") or set()
+    if tension_id not in active_ids:
+        await update.message.reply_text("Такого активного напряжения нет в списке выше. Введи другой номер.")
+        return RELEASE_ID
+
+    async with SessionLocal() as session:
+        repo = TensionsRepo(session)
+        tension = await repo.get_by_id(tension_id)
+
+    if not tension:
+        await update.message.reply_text("Напряжение не найдено. Попробуй ещё раз.")
+        return RELEASE_ID
+
+    context.user_data["release_tension"] = {"tension_id": tension.id}
+    await update.message.reply_text(
+        f"Ок, релизим #{tension.id} | {tension.title}\n"
+        "Можно добавить заметку, что именно было решено, или отправь 'skip'."
+    )
+    return RELEASE_NOTE
+
+
+async def release_note(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if update.message is None or update.message.text is None:
+        return RELEASE_NOTE
+
+    note_raw = update.message.text.strip()
+    note = None if note_raw.lower() in {"skip", "пропуск"} else note_raw
+    if note is not None and len(note) > 5000:
+        await update.message.reply_text("Заметка слишком длинная. Максимум 5000 символов.")
+        return RELEASE_NOTE
+
+    tension_id = (context.user_data.get("release_tension") or {}).get("tension_id")
+    if not tension_id:
+        await update.message.reply_text("Не удалось определить напряжение. Запусти /release заново.")
+        return ConversationHandler.END
+
+    async with SessionLocal() as session:
+        repo = TensionsRepo(session)
+        tension = await repo.release_tension(tension_id, actor="user", note=note)
+
+    context.user_data.pop("release_tension", None)
+    if not tension:
+        await update.message.reply_text("Напряжение не найдено.")
+        return ConversationHandler.END
+
+    await update.message.reply_text(
+        f"Готово: #{tension.id} переведено в status={tension.status}. "
+        "Оно больше не будет в /list и /return."
+    )
+    return ConversationHandler.END
+
+
 def run() -> None:
     if not settings.telegram_bot_token:
         raise RuntimeError(
@@ -200,6 +291,16 @@ def run() -> None:
                 TITLE: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_title)],
                 CHARGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_charge)],
                 VECTOR: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_vector)],
+            },
+            fallbacks=[CommandHandler("cancel", cancel)],
+        )
+    )
+    application.add_handler(
+        ConversationHandler(
+            entry_points=[CommandHandler("release", release_start)],
+            states={
+                RELEASE_ID: [MessageHandler(filters.TEXT & ~filters.COMMAND, release_pick_id)],
+                RELEASE_NOTE: [MessageHandler(filters.TEXT & ~filters.COMMAND, release_note)],
             },
             fallbacks=[CommandHandler("cancel", cancel)],
         )

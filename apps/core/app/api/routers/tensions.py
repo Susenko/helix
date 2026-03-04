@@ -64,6 +64,10 @@ class UpdateTensionIn(BaseModel):
     status: Optional[Literal["held", "forming", "released", "parked", "dropped"]] = None
 
 
+class ReleaseTensionIn(BaseModel):
+    note: Optional[str] = Field(default=None, max_length=5000)
+
+
 @router.post("", response_model=TensionOut)
 async def create_tension(payload: CreateTensionIn, session: AsyncSession = Depends(get_db_session)):
     repo = TensionsRepo(session)
@@ -100,6 +104,23 @@ async def update_tension(
         vector=payload.vector,
         status=payload.status,
         actor="user",
+    )
+    if not t:
+        raise HTTPException(status_code=404, detail="Tension not found")
+    return t
+
+
+@router.post("/{tension_id}/release", response_model=TensionOut)
+async def release_tension(
+    tension_id: int,
+    payload: ReleaseTensionIn,
+    session: AsyncSession = Depends(get_db_session),
+):
+    repo = TensionsRepo(session)
+    t = await repo.release_tension(
+        tension_id,
+        actor="user",
+        note=payload.note,
     )
     if not t:
         raise HTTPException(status_code=404, detail="Tension not found")

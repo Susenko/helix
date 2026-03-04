@@ -136,3 +136,45 @@ class TensionsRepo:
             await self.session.refresh(t)
 
         return t
+
+    async def release_tension(
+        self,
+        tension_id: int,
+        *,
+        actor: str = "user",
+        note: str | None = None,
+    ) -> Tension | None:
+        t = await self.get_by_id(tension_id)
+        if not t:
+            return None
+
+        if t.status == "released":
+            return t
+
+        now = datetime.utcnow()
+        prev_status = t.status
+        t.status = "released"
+        t.updated_at = now
+
+        self.session.add(
+            TensionEvent(
+                tension_id=t.id,
+                type="stage_changed",
+                actor=actor,
+                payload={"from": prev_status, "to": "released"},
+                created_at=now,
+            )
+        )
+        self.session.add(
+            TensionEvent(
+                tension_id=t.id,
+                type="released",
+                actor=actor,
+                payload={"note": note} if note else {},
+                created_at=now,
+            )
+        )
+
+        await self.session.commit()
+        await self.session.refresh(t)
+        return t

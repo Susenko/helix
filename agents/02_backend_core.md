@@ -6,7 +6,7 @@ The backend is a Python application using **FastAPI**. It is located in `apps/co
 ## Structure
 - **Entry Point**: `app/main.py` - Sets up the FastAPI app, CORS middleware, and mounts routers.
 - **Configuration**: `app/settings.py` - Manages environment variables and app settings.
-- **Telegram Worker**: `app/telegram_bot.py` - Runs Telegram polling and handles bot commands (`/start`, `/add`, `/list`, `/return`, `/cancel`).
+- **Telegram Worker**: `app/telegram_bot.py` - Runs Telegram polling and handles bot commands (`/start`, `/add`, `/list`, `/return`, `/release`, `/cancel`).
 - **Telegram Commands**: `app/telegram/commands/` - Isolated command handlers, including `/return` selection+event logging logic in `return_cmd.py`.
 
 ## Database Layer
@@ -22,7 +22,7 @@ The backend is a Python application using **FastAPI**. It is located in `apps/co
 Routers are located in `app/api/routers/`.
 - **Calendar (`/calendar`)**: Handles Google Calendar operations (list events, find free slots).
 - **OAuth (`/oauth`)**: Manages Google OAuth 2.0 flow for authentication.
-- **Tensions (`/tensions`)**: Create/list/update tension containers (`POST /tensions`, `GET /tensions/active`, `PATCH /tensions/{id}`).
+- **Tensions (`/tensions`)**: Create/list/update/release tension containers (`POST /tensions`, `GET /tensions/active`, `PATCH /tensions/{id}`, `POST /tensions/{id}/release`).
 - **Baseline Fields (`/baseline-fields`)**: CRUD for background domains (`POST /baseline-fields`, `GET /baseline-fields`, `PATCH /baseline-fields/{id}`, `DELETE /baseline-fields/{id}`).
 - **Realtime**: dedicated endpoints for realtime voice/data connections.
 
